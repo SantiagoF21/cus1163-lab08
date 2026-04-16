@@ -24,62 +24,70 @@ public class MemoryAllocationLab {
     }
 
     static int totalMemory;
-    static ArrayList<MemoryBlock> memory;
+    static ArrayList<MemoryBlock> memory = new ArrayList<>();
     static int successfulAllocations = 0;
     static int failedAllocations = 0;
 
-    /**
-     * TODO 1, 2: Process memory requests from file
-     * <p>
-     * This method reads the input file and processes each REQUEST and RELEASE.
-     * <p>
-     * TODO 1: Read and parse the file
-     *   - Open the file using BufferedReader
-     *   - Read the first line to get total memory size
-     *   - Initialize the memory list with one large free block
-     *   - Read each subsequent line and parse it
-     *   - Call appropriate method based on REQUEST or RELEASE
-     * <p>
-     * TODO 2: Implement allocation and deallocation
-     *   - For REQUEST: implement First-Fit algorithm
-     *     * Search memory list for first free block >= requested size
-     *     * If found: split the block if necessary and mark as allocated
-     *     * If not found: increment failedAllocations
-     *   - For RELEASE: find the process's block and mark it as free
-     *   - Optionally: merge adjacent free blocks (bonus)
-     */
     public static void processRequests(String filename) {
-        memory = new ArrayList<>();
-
-        // TODO 1: Read file and initialize memory
-        // Try-catch block to handle file reading
-        // Read first line for total memory size
-        // Create initial free block: new MemoryBlock(0, totalMemory, null)
-        // Read remaining lines in a loop
-        // Parse each line and call allocate() or deallocate()
-
-
-        // TODO 2: Implement these helper methods
-
-    }
-
-    /**
-     * TODO 2A: Allocate memory using First-Fit
-     */
+    try (BufferedReader br = new BufferedReader(new FileReader(filename))) {
+			totalMemory = Integer.parseInt(br.readLine().trim());
+    		memory.add(new MemoryBlock(0, totalMemory, null));
+			System.out.println("Reading from: " + filename);
+			System.out.println("Total Memory: " + totalMemory + "KB\n");
+			String line;
+			while ((line = br.readLine()) != null) {
+				line = line.trim();
+				if (line.isEmpty())
+					continue;
+					
+				String[] parts = line.split("\\s+");
+				
+				if (parts[0].equals("REQUEST")) {
+					String processName = parts[1];
+					int size = Integer.parseInt(parts[2]);
+					allocate(processName, size);
+				} else if (parts[0].equals("RELEASE")) {
+					String processName = parts[1];
+					deallocate(processName);
+				}
+			}
+		} catch (IOException e) {
+			System.err.println("Error reading file: " + e.getMessage());
+		}
+	}
+		
     private static void allocate(String processName, int size) {
-        // Search through memory list
-        // Find first free block where size >= requested size
-        // If found:
-        //   - Mark block as allocated (set processName)
-        //   - If block is larger than needed, split it:
-        //     * Create new free block for remaining space
-        //     * Add it to memory list after current block
-        //   - Increment successfulAllocations
-        //   - Print success message
-        // If not found:
-        //   - Increment failedAllocations
-        //   - Print failure message
-
+    	for (int i  = 0; i < memory.size(); i++) {
+    		MemoryBlock block = memory.get(i);
+    		
+    		if (block.isFree() && block.size >= size) {
+    			if (block.size > size) {
+    				int remainingSize = block.size - size;
+    				int newStart = block.start + size;
+    				memory.add(i + 1, new MemoryBlock(newStart, remainingSize, null));
+    			}
+    			
+    			block.size = size;
+    			block.processName = processName;
+    			successfulAllocations++;
+    			System.out.println("REQUEST " + processName + " " + size + " KB -> SUCCESS");
+    			return;
+    		}
+    	}
+    	
+    	failedAllocations++;
+    	System.out.println("REQUEST " + processName + " " + size + " KB -> FAILED");
+    }
+    
+    static void deallocate(String processName) {
+    	for (MemoryBlock block : memory) {
+    		if (!block.isFree() && block.processName.equals(processName)) {
+    			block.processName = null;
+    			System.out.println("RELEASE " + processName + " → SUCCESS");
+                return;
+    		}
+    	}
+    	System.out.println("RELEASE " + processName + " → ERROR (process not found)");
     }
 
     public static void displayStatistics() {
